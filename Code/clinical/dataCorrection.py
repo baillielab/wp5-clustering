@@ -19,7 +19,7 @@ path = "Y:/shared/data/wp-5/data_linkage/release/datasets/clinical/002_crf_20200
 
 # Create list of columns of interests
 
-demographics = ['age', 'sex','ethnicity','temp_vsorres','rr_vsorres','oxy_vsorres','hr_vsorres','sysbp_vsorres','admission_diabp_vsorres','infect_cmtrt','onset2admission']
+demographics = ['subjid', 'age', 'sex','ethnicity','temp_vsorres','rr_vsorres','oxy_vsorres','hr_vsorres','sysbp_vsorres','admission_diabp_vsorres','infect_cmtrt','onset2admission']
 clinical = ['daily_neutro_lborres', 'daily_lymp_lborres', 'daily_plt_lborres', 'daily_crp_lborres', 'daily_creat_lborres', 'daily_bun_lborres']
 morbidities = ['chrincard', 'chronicpul_mhyn', 'asthma_mhyn', 'renal_mhyn', 'modliv', 'diabetescom_mhyn', 'diabetes_mhyn', 'dementia_mhyn', 'malignantneo_mhyn', 'obesity_mhyn']
 
@@ -31,7 +31,7 @@ data = pd.read_csv(path, usecols = columns)
 
 # Ranges contains acceptable variable ranges.
 
-Ranges = pd.read_excel(r'Code/clinical/Ranges.xlsx')
+Ranges = pd.read_excel(r'Ranges.xlsx')
 
 
 # Drop any rows or columns that have all missing values
@@ -84,14 +84,15 @@ data['ethnicity'] = data['ethnicity'].replace(to_replace=ethnic_values, value = 
 # catVars is a list of variables that are categorical
 # nonCatVars is a list of variables that are not categorical 
 
-catVars= ['sex', 'ethnicity', 'infect_cmtrt', 'chrincard', 'chronicpul_mhyn', 
+catVars= ['subjid', 'sex', 'ethnicity', 'infect_cmtrt', 'chrincard', 'chronicpul_mhyn', 
           'asthma_mhyn', 'renal_mhyn', 'modliv', 'diabetescom_mhyn', 'diabetes_mhyn', 
           'dementia_mhyn', 'malignantneo_mhyn', 'obesity_mhyn']
 
-nonCatVars = set(data.columns) - set(catVars)
+nonCatVars = list( set(data.columns) - set(catVars) )
 
-data[catVars] = data[catVars].astype(float)
 
+
+data.loc[:, data.columns != 'subjid'] =  data.loc[:, data.columns != 'subjid'].astype(float)
 
 # The function explore print value counts for categorical variables, and
 # plots important ranges for non categorical variables.
@@ -104,8 +105,8 @@ def explore(var):
         
     else:
         
-        upper = Ranges.loc[1, var]
-        lower = Ranges.loc[2, var]  
+        upper = float(Ranges.loc[1, var])
+        lower = float(Ranges.loc[2, var])  
         
         print('Lower:', lower)
         print('Upper:', upper)
@@ -154,16 +155,16 @@ def correct(data):
         
         data[col][  (data[col] > hardUpper) | (data[col] < hardLower) ] = 'nan'
     
-    data = data.astype(float)
+    data.loc[:, data.columns != 'subjid'] =  data.loc[:, data.columns != 'subjid'].astype(float)
         
     return data        
         
         
-        
+data = correct(data)        
         
 # Save data as csv        
 
-data.to_csv( 'Y:/stevenkerr/processedData.csv')
+data.to_csv( 'Y:/stevenkerr/processedData.csv', index = False)
 
 
 
