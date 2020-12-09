@@ -11,14 +11,14 @@ library(data.table)
 data <- fread( 'Y:/stevenkerr/processedData.csv', data.table=FALSE)
 
 
-# catCols is a list of variables that are categorical.
+# catVars is a list of variables that are categorical.
 
-catCols <- c('sex', 'ethnicity', 'infect_cmtrt', 'chrincard', 'chronicpul_mhyn', 'asthma_mhyn', 'renal_mhyn', 'modliv',           
+catVars <- c('sex', 'ethnicity', 'infect_cmtrt', 'chrincard', 'chronicpul_mhyn', 'asthma_mhyn', 'renal_mhyn', 'modliv',           
              'diabetescom_mhyn', 'diabetes_mhyn', 'dementia_mhyn', 'malignantneo_mhyn', 'obesity_mhyn' )
 
 # mice needs categorical varaiables to be factors
 
-data[catCols] <- lapply(data[catCols], factor )
+data[catVars] <- lapply(data[catVars], factor )
 
 sapply(data, class)
 
@@ -54,7 +54,7 @@ show(rowNAPlot)
 
 # Take a sample of data
 
-sample <- sample_n(data, 200)
+sample <- sample_n(data, 500)
 
 # The variables to be imputed are everything except subjid.
 
@@ -62,25 +62,16 @@ imputationVars <- colnames(data)[colnames(data) != 'subjid' ]
 
 # Carry out imputation
 
-Imputation <- mice(sample,m=3,maxit=2, blocks = imputationVars)
+Imputation <- mice(sample,m=3,maxit=5, predictorMatrix = quickpred(sample, exclude = 'subjid')  )
 
 
 # Imputation diagnostics
 
-densityplot(Imputation)
-
-plot(Imputation)
-
+# freqTab prints frequency tables for the imputations and the real data against each other for the categorical variables
+# to allow comparison.
 
 
-
-
-
-
-freqPlot <- function(Imputation){
-  
-  
-  var <- 'ethnicity'
+freqTab <- function(Imputation){
   
   for (var in catVars){
     
@@ -104,17 +95,24 @@ freqPlot <- function(Imputation){
       freqTable[, 'real'] <- table(data[var]) / sum( table(data[var]) )
       
     }
+    print(var)
     
-    plot <- ggplot(freqTable, aes(x= rownames(freqTable))  ) + geom_line(aes(y = 'real'), color = 'blue')
+    print(freqTable)
     
-    for (m in seq(1,Imputation$m, 1) ){
-      
-      plot <- plot + geom_line(aes(y = m), color = 'magenta') 
-      
-    show(plot)
-      
-    }
   }
-  
 }
+
+
+
+
+
+densityplot(Imputation)
+
+plot(Imputation)
+
+freqTab(Imputation)
+
+
+
+
 
