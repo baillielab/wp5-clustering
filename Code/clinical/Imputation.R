@@ -6,9 +6,12 @@ library(mice)
 
 library(data.table)
 
+# The path may need to be changed depending on what machine your are working on.
+# If running on ultra, use
+# '/home/u034/shared/data/wp-5/imputed_clinical_data/cleanData.csv'
 
 
-data <- fread( '/home/u034/shared/data/wp-5/imputed_clinical_data/cleanData.csv', data.table=FALSE)
+data <- fread( 'Y:/shared/data/wp-5/imputed_clinical_data/cleanData.csv', data.table=FALSE)
 
 
 # catVars is a list of variables that are categorical.
@@ -64,7 +67,7 @@ imputationVars <- colnames(data)[colnames(data) != 'subjid' ]
 
 Imputation <- mice(sample,m=3,maxit=5, predictorMatrix = quickpred(sample, exclude = 'subjid')  )
 
-# Save the mids object
+# Save the mids objection 
 
 save(Imputation, file = 'Y:/shared/data/wp-5/clinical_imputation/mids.RData')
 
