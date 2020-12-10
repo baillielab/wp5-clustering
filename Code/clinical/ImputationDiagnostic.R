@@ -1,7 +1,7 @@
-
-
-
 # Imputation diagnostics
+
+
+library(mice)
 
 # freqTab prints frequency tables for the imputations and the real data against each other for the categorical variables
 # to allow comparison.
@@ -41,7 +41,7 @@ freqTab <- function(Imputation){
 
 # Load mids object
 
-Imputation <- load(file = 'Y:/shared/data/wp-5/clinical_imputation/mids.RData')
+load(file = 'Y:/shared/data/wp-5/clinical_imputation/mids.RData')
 
 
 
