@@ -7,15 +7,30 @@ Created on Wed Dec  2 10:03:25 2020
 
 import pandas as pd
 
-import numpy as np
 
-import math
+# This takes care of changing path names depending on whether working on ultra or not.
+# If working on ultra, set ultra==True
 
-import matplotlib.pyplot as plt
+ultra = False
+
+if ultra == True:
+    
+    root = '/home/u034/'
+    
+else:
+    
+    root = 'Y:/'
 
 
 
-path = "Y:/shared/data/wp-5/data_linkage/release/datasets/clinical/002_crf_20200904_topline_cleaned_20200921_161000.csv"
+
+
+# The path variable will need to be changed depending on what machine you are
+# working on.
+# If running on ultra, use
+# "/home/u034/shared/data/wp-5/data_linkage/release/datasets/clinical/002_crf_20200904_topline_cleaned_20200921_161000.csv"
+
+path = root + 'shared/data/wp-5/data_linkage/release/datasets/clinical/002_crf_20200904_topline_cleaned_20200921_161000.csv'
 
 # Create list of columns of interests
 
@@ -162,9 +177,14 @@ def correct(data):
         
 data = correct(data)        
         
-# Save data as csv        
+# Save data as csv  .
+# The path may need to be changed depending on what machine your are working on.
+# If running on ultra, use
+# '/home/u034/shared/data/wp-5/imputed_clinical_data/cleanData.csv'
+# On loal, use
+# 'Y:/shared/data/wp-5/imputed_clinical_data/cleanData.csv'
 
-data.to_csv( 'Y:/stevenkerr/processedData.csv', index = False)
+data.to_csv( root + 'shared/data/wp-5/clinical_imputation/cleanData.csv', index = False)
 
 
 

@@ -6,12 +6,22 @@ library(mice)
 
 library(data.table)
 
-# The path may need to be changed depending on what machine your are working on.
-# If running on ultra, use
-# '/home/u034/shared/data/wp-5/imputed_clinical_data/cleanData.csv'
+# This takes care of changing path names depending on whether working on ultra or not.
+# If working on ultra, set ultra==True
+
+ultra <- FALSE
+
+if (ultra == TRUE){
+  
+  root <- '/home/u034/'
+} else {
+  
+  root <- 'Y:/'
+}
 
 
-data <- fread( 'Y:/shared/data/wp-5/imputed_clinical_data/cleanData.csv', data.table=FALSE)
+
+data <- fread( paste( root, 'shared/data/wp-5/clinical_imputation/cleanData.csv', sep=''), data.table=FALSE)
 
 
 # catVars is a list of variables that are categorical.
@@ -71,8 +81,16 @@ Imputation <- mice(sample,m=3,maxit=5, predictorMatrix = quickpred(sample, exclu
 
 save(Imputation, file = 'Y:/shared/data/wp-5/clinical_imputation/mids.RData')
 
+# Write complete imputed datasets to csv
 
-
+for (m in 1:Imputation$m ){
+  
+  name <- paste(root, 'shared/data/wp-5/clinical_imputation/imputed_datasets/imputed_dataset_', sep="")
+  name <- paste(name, m, sep="")
+  name <- paste(name, '.csv', sep="")
+  
+  write.csv( complete(Imputation, m), name )
+}
 
 
 
