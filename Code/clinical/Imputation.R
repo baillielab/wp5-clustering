@@ -9,7 +9,7 @@ library(data.table)
 # This takes care of changing path names depending on whether working on ultra or not.
 # If working on ultra, set ultra==True
 
-ultra <- FALSE
+ultra <- TRUE
 
 if (ultra == TRUE){
   
@@ -62,12 +62,9 @@ show(rowNAPlot)
 
 
 
-
-
-
 # Take a sample of data
 
-sample <- sample_n(data, 500)
+# sample <- sample_n(data, 500)
 
 # The variables to be imputed are everything except subjid.
 
@@ -79,7 +76,7 @@ Imputation <- mice(sample,m=3,maxit=5, predictorMatrix = quickpred(sample, exclu
 
 # Save the mids objection 
 
-save(Imputation, file = 'Y:/shared/data/wp-5/clinical_imputation/mids.RData')
+save(Imputation, file = paste( root,'shared/data/wp-5/clinical_imputation/mids.RData', sep='') )
 
 # Write complete imputed datasets to csv
 
