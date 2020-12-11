@@ -142,18 +142,15 @@ def explore(var):
         data[(data[var] < halfRange/5) & (data[var] > -halfRange/5)].hist(var)
         
     return
-        
-            
+                
 # This function 'corrects' the data.
 # Values between hard limits and soft limits get set to the soft limit.
 # Negative values whose magnitude is in the acceptable range gets multiplied by -1.
 # Everything else gets set to nan.
 
-def correct(data):
+def clean(data):
     
     for col in nonCatVars:
-        
-        print(col)
         
         hardUpper = float(Ranges.loc[0, col ])
         softUpper = float(Ranges.loc[1, col ])
@@ -166,7 +163,9 @@ def correct(data):
         
         data[col][  (data[col] >= hardLower) & (data[col] <= softLower) ] = softLower
         
-        data[col][   (data[col] >= -softUpper) & (data[col] <= -softLower)] *= -1
+        if Ranges.loc[5, col] == 'Yes':
+        
+            data[col][   (data[col] >= -softUpper) & (data[col] <= -softLower)] *= -1
         
         data[col][  (data[col] > hardUpper) | (data[col] < hardLower) ] = 'nan'
     
@@ -175,7 +174,7 @@ def correct(data):
     return data        
         
         
-data = correct(data)        
+data = clean(data)        
         
 # Save data as csv  .
 # The path may need to be changed depending on what machine your are working on.

@@ -18,6 +18,10 @@ if (ultra == TRUE){
 }
 
 
+# catVars is a list of variables that are categorical.
+
+catVars <- c('sex', 'ethnicity', 'infect_cmtrt', 'chrincard', 'chronicpul_mhyn', 'asthma_mhyn', 'renal_mhyn', 'modliv',           
+             'diabetescom_mhyn', 'diabetes_mhyn', 'dementia_mhyn', 'malignantneo_mhyn', 'obesity_mhyn' )
 
 
 # freqTab prints frequency tables for the imputations and the real data against each other for the categorical variables
