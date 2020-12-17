@@ -54,8 +54,8 @@ columnNAPlot <-ggplot(columnNA, aes(x= reorder( rownames(columnNA), `Number of N
 show(columnNAPlot)
 
 
-rowNAPlot <-ggplot(rowNA, aes(x=`Number of NA` ) ) + geom_histogram(bins=28, fill="steelblue") + 
-  scale_x_continuous(breaks = seq(0, 28, 1) ) +
+rowNAPlot <-ggplot(rowNA, aes(x=`Number of NA` ) ) + geom_histogram(bins=dim(data)[2], fill="steelblue") + 
+  scale_x_continuous(breaks = seq(0, dim(data)[2], 1) ) +
   scale_y_continuous(breaks = seq(0, 37000, 5000) )
 
 show(rowNAPlot)
@@ -64,15 +64,36 @@ show(rowNAPlot)
 
 # Take a sample of data
 
-# sample <- sample_n(data, 500)
+#sample <- sample_n(data, 500)
 
-# The variables to be imputed are everything except subjid.
+# impExclude is a vector of variables that are not to be imputed
 
-imputationVars <- colnames(data)[colnames(data) != 'subjid' ]
+impExclude <- c('subjid', 'SFR')
+
+# mice normally automatically detects data types in each column and selects an appropriate imputation method for them
+# However, since we are excluding some variables from the imputation, we have to set up the method vector manually.
+
+createMethod <- function(impExclude){
+  
+  method <- as.data.frame( sapply(data, nlevels) )
+  
+  method[ method[,1] > 2, ] <- 'polyreg'
+  
+  method[ impExclude, ] <- ''
+  
+  method[ method[,1] ==0 , ] <- 'pmm'
+  
+  method[ method[,1] ==2 , ] <- 'logreg'
+  
+  method <- dplyr::pull(method, colnames(method) )
+}
+
+method <- createMethod(impExclude)
+
 
 # Carry out imputation
 
-Imputation <- mice(sample,m=3,maxit=5, predictorMatrix = quickpred(sample, exclude = 'subjid')  )
+Imputation <- mice(data,m=3,maxit=5, predictorMatrix = quickpred(data, exclude = impExclude), method = method  )
 
 # Save the mids objection 
 
@@ -86,7 +107,11 @@ for (m in 1:Imputation$m ){
   name <- paste(name, m, sep="")
   name <- paste(name, '.csv', sep="")
   
-  write.csv( complete(Imputation, m), name )
+  Complete <- complete(Imputation, m)
+  
+  Complete['SFR'] <- Complete['sao2']/Complete['fio2']
+  
+  write.csv(Complete , name )
 }
 
 

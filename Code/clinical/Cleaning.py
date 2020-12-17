@@ -280,7 +280,7 @@ data = addSFR(data)
 
 # Drop columns that aren't of interest
 
-data = data.drop( percentVars + Int1Vars + ['fio2c_lborres'], axis=1 )
+data = data.drop( percentVars + Int1Vars + ['daily_fio2c_lborres'], axis=1 )
 
 
 data.loc[:, data.columns != 'subjid'] =  data.loc[:, data.columns != 'subjid'].astype(float)
