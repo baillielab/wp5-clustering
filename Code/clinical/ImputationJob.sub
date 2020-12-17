@@ -1,6 +1,6 @@
 #!/bin/bash -l
-#PBS -N RTest1
-#PBS -l walltime=1:00:00
+#PBS -N ImputationJob
+#PBS -l walltime=10:00:00
 #PBS -l ncpus=258,mem=10G
 #PBS -q uv2000
 #PBS -j oe
