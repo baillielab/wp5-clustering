@@ -8,6 +8,7 @@ Created on Wed Dec  2 10:03:25 2020
 import pandas as pd
 
 
+
 # This takes care of changing path names depending on whether working on ultra or not.
 # If working on ultra, set ultra==True
 
@@ -22,23 +23,35 @@ else:
     root = 'Y:/'
 
 
-
-
-
-# The path variable will need to be changed depending on what machine you are
-# working on.
-# If running on ultra, use
-# "/home/u034/shared/data/wp-5/data_linkage/release/datasets/clinical/002_crf_20200904_topline_cleaned_20200921_161000.csv"
-
 path = root + 'shared/data/wp-5/data_linkage/release/datasets/clinical/002_crf_20200904_topline_cleaned_20200921_161000.csv'
 
-# Create list of columns of interests
 
-demographics = ['subjid', 'age', 'sex','ethnicity','temp_vsorres','rr_vsorres','oxy_vsorres','hr_vsorres','sysbp_vsorres','admission_diabp_vsorres','infect_cmtrt','onset2admission']
-clinical = ['daily_neutro_lborres', 'daily_lymp_lborres', 'daily_plt_lborres', 'daily_crp_lborres', 'daily_creat_lborres', 'daily_bun_lborres']
-morbidities = ['chrincard', 'chronicpul_mhyn', 'asthma_mhyn', 'renal_mhyn', 'modliv', 'diabetescom_mhyn', 'diabetes_mhyn', 'dementia_mhyn', 'malignantneo_mhyn', 'obesity_mhyn']
+# Create list of variables of interest, according to their type.
 
-columns = demographics + clinical + morbidities
+# catVars is a list of variables that are categorical
+
+
+catVars= ['subjid', 'sex', 'ethnicity', 'infect_cmtrt', 'chrincard', 'chronicpul_mhyn', 
+          'asthma_mhyn', 'renal_mhyn', 'modliv', 'diabetescom_mhyn', 'diabetes_mhyn', 
+          'dementia_mhyn', 'malignantneo_mhyn', 'obesity_mhyn']
+
+# realVars is a list of variables that take values in the real numbers
+
+realVars = ['age', 'onset2admission', 'hr_vsorres', 'sysbp_vsorres','temp_vsorres'
+            ,'rr_vsorres', 'admission_diabp_vsorres', 'daily_crp_lborres',
+            'daily_bun_lborres','daily_creat_lborres','daily_neutro_lborres',
+            'daily_lymp_lborres','daily_plt_lborres', 'daily_fio2c_lborres']
+
+# percentVars is a list of variables that are percentages
+
+percentVars = ['oxy_vsorres', 'daily_sao2_lborres']
+
+# Int1Vars is a list of variables that take values in [0,1]
+
+Int1Vars = ['daily_fio2_lborres' , 'daily_fio2b_lborres']
+
+
+columns = catVars + realVars + percentVars + Int1Vars
 
 
 
@@ -47,6 +60,8 @@ data = pd.read_csv(path, usecols = columns)
 # Ranges contains acceptable variable ranges.
 
 Ranges = pd.read_excel(r'Ranges.xlsx')
+
+Ranges.iloc[0:4, 1:] = Ranges.iloc[0:4, 1:].astype(float)
 
 
 # Drop any rows or columns that have all missing values
@@ -72,8 +87,6 @@ data = data.dropna(axis=0, how = 'all')
 # Latin American -> 7
 # Aboriginal/First Nations -> 8
 
-
-
 data = data.replace(to_replace=['no', 'No', 'NO', 'yes', 'Yes', 'YES' ], value=[0,0,0,1,1,1])
 
 data = data.replace(to_replace=['Unknown', 'Not specified', ''], value=['nan', 'nan', 'nan'])
@@ -83,31 +96,28 @@ data = data.replace(to_replace=['Unchecked', 'Checked'], value=[0,1])
 data = data.replace(to_replace=['Male', 'Female'], value=[0,1])
 
 
-
 ethnic_values = data.ethnicity.unique()
 
 # Remove nan 
 
 ethnic_values  = ethnic_values[~pd.isnull(ethnic_values)]
 
-
 data['ethnicity'] = data['ethnicity'].replace(to_replace=ethnic_values, value = range(len(ethnic_values)) )
 
 
 
 
-# catVars is a list of variables that are categorical
-# nonCatVars is a list of variables that are not categorical 
+# 'daily_fio2c_lborres' is is oxygen received in litres per minute.
+# We assume that if greater than 20, they actually wrote FiO2
+# Each additional 4% FiO2 is equivalent to 1 L/min
+# daily_fio2c_lborres needs to be converted to a number in [0,1]
 
-catVars= ['subjid', 'sex', 'ethnicity', 'infect_cmtrt', 'chrincard', 'chronicpul_mhyn', 
-          'asthma_mhyn', 'renal_mhyn', 'modliv', 'diabetescom_mhyn', 'diabetes_mhyn', 
-          'dementia_mhyn', 'malignantneo_mhyn', 'obesity_mhyn']
-
-nonCatVars = list( set(data.columns) - set(catVars) )
-
+data['daily_fio2c_lborres'][data['daily_fio2c_lborres'] >= 20] = \
+  (data['daily_fio2c_lborres'][data['daily_fio2c_lborres'] >= 20] - 20)/4
 
 
-data.loc[:, data.columns != 'subjid'] =  data.loc[:, data.columns != 'subjid'].astype(float)
+
+
 
 # The function explore print value counts for categorical variables, and
 # plots important ranges for non categorical variables.
@@ -142,40 +152,139 @@ def explore(var):
         data[(data[var] < halfRange/5) & (data[var] > -halfRange/5)].hist(var)
         
     return
+
+
+
+
+# If appropriate, multiply negative values in a column by -1
+
+def fixNeg(data):
+    
+    for var in (realVars + percentVars + Int1Vars):
+    
+        if Ranges.loc[4, var] == 'Yes':
+        
+            data[var][ data[var] < 0 ] *= -1
+            
+    return data
+
+# If a percentage variable has been recorded as in [0,1], multiply by 100
+# if it has been recorded as in [100, 1000], divide by 10
+
+def cleanPercent(data):
+
+    for var in percentVars:
+        
+        data[var][ (data[var]>0 ) & (data[var] <=1)  ] *= 100
+        
+        data[var][ (data[var]>100 ) & (data[var] <=1000)  ] /= 10
+        
+
+    return(data)
+
+
+# If a variable in [0,1] has been recorded as a percentage, divide it by 100
+
+def cleanInt1(data):
+    
+    for var in Int1Vars:
+        
+        data[var][ (data[var]>1 ) & (data[var] <=100)  ] /= 100
+    
+    return data
+        
+
+
                 
-# This function 'corrects' the data.
+# This function squeezes variables.
 # Values between hard limits and soft limits get set to the soft limit.
-# Negative values whose magnitude is in the acceptable range gets multiplied by -1.
 # Everything else gets set to nan.
 
-def clean(data):
+def squeeze(data):
     
-    for col in nonCatVars:
-        
-        hardUpper = float(Ranges.loc[0, col ])
-        softUpper = float(Ranges.loc[1, col ])
-        
-        hardLower = float(Ranges.loc[2, col ])
-        softLower = float(Ranges.loc[3, col ])
-        
-        
-        data[col][  (data[col] >= softUpper) & (data[col] <= hardUpper) ] = softUpper
-        
-        data[col][  (data[col] >= hardLower) & (data[col] <= softLower) ] = softLower
-        
-        if Ranges.loc[5, col] == 'Yes':
-        
-            data[col][   (data[col] >= -softUpper) & (data[col] <= -softLower)] *= -1
-        
-        data[col][  (data[col] > hardUpper) | (data[col] < hardLower) ] = 'nan'
+    for var in (realVars + percentVars + Int1Vars):
     
-    data.loc[:, data.columns != 'subjid'] =  data.loc[:, data.columns != 'subjid'].astype(float)
+        hardUpper = Ranges.loc[0, var ]
+        softUpper = Ranges.loc[1, var ]
         
-    return data        
+        hardLower = Ranges.loc[2, var ]
+        softLower = Ranges.loc[3, var ]
         
         
-data = clean(data)        
+        data[var][  (data[var] >= softUpper) & (data[var] <= hardUpper) ] = softUpper
         
+        data[var][  (data[var] >= hardLower) & (data[var] <= softLower) ] = softLower
+        
+        data[var][  (data[var] > hardUpper) | (data[var] < hardLower) ] = float('nan')
+        
+    return data   
+
+     
+
+# This functions adds a derived SFR column to the data
+
+def addSFR(data):
+    
+    #Create column sao2
+    
+    data['sao2'] = data['daily_sao2_lborres']
+    
+
+    indices = data.index[ (data['daily_sao2_lborres'].isnull() ) & ( ~data['oxy_vsorres'].isnull() )   ].tolist()
+    
+    data.loc[ indices,  'sao2'] = data.loc[ indices, 'oxy_vsorres' ]
+    
+    # Create column derived fio2
+    
+    data['fio2'] = data['daily_fio2_lborres']
+    
+    
+    indices2 = data.index[  (data['fio2'].isnull())  & (~data['daily_fio2b_lborres'].isnull()   )].tolist()
+    
+    data.loc[ indices2,  'fio2'] = data.loc[ indices2, 'daily_fio2b_lborres']
+    
+    
+    indices3 = data.index[  (data['fio2'].isnull())  & (~data['daily_fio2c_lborres'].isnull()   )].tolist()
+    
+    
+    # daily_fio2c_lborres is the amount of oxygen in L/min patient receives
+    # in addition to atmospheric oxygen, assumed to be 21% of atmosphere.
+    # Each L/min of additional oxygen implies an increase in FiO2 of 0.04%
+    
+    data.loc[ indices3,  'fio2'] = 0.04* data.loc[ indices3, 'daily_fio2c_lborres'] + 0.21
+    
+    
+    # Create column SFR
+    
+    data['SFR'] = data['sao2']/data['fio2']
+    
+    return data
+
+
+
+
+
+
+data = fixNeg(data)    
+
+data = cleanPercent(data)
+
+data = cleanInt1(data)
+
+data = squeeze(data)
+
+
+data = addSFR(data)
+
+
+
+# Drop columns that aren't of interest
+
+data = data.drop( percentVars + Int1Vars + ['fio2c_lborres'], axis=1 )
+
+
+data.loc[:, data.columns != 'subjid'] =  data.loc[:, data.columns != 'subjid'].astype(float)
+
 # Save data as csv  .
 # The path may need to be changed depending on what machine your are working on.
 # If running on ultra, use
@@ -184,11 +293,6 @@ data = clean(data)
 # 'Y:/shared/data/wp-5/imputed_clinical_data/cleanData.csv'
 
 data.to_csv( root + 'shared/data/wp-5/clinical_imputation/cleanData.csv', index = False)
-
-
-
-
-
 
 
 
