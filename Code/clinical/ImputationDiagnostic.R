@@ -30,13 +30,9 @@ catVars <- c('sex', 'ethnicity', 'infect_cmtrt', 'chrincard', 'chronicpul_mhyn',
 
 freqTab <- function(Imputation){
   
-  data <- as.data.frame(Imputation['data'])
-  
   for (var in catVars){
     
-    data.var <- paste('data.', var, sep='' )
-    
-    real <- table(data[data.var])
+    real <- table(data[var])
     
     nlevels <- length(real)
     
@@ -53,7 +49,7 @@ freqTab <- function(Imputation){
       
       freqTable[, m] <- tab / sum(tab)
       
-      freqTable[, 'real'] <- table(data[data.var]) / sum( table(data[data.var]) )
+      freqTable[, 'real'] <- table(data[var]) / sum( table(data[var]) )
       
     }
     print(var)
@@ -71,12 +67,7 @@ load(file = paste(root, 'shared/data/wp-5/clinical_imputation/mids.RData', sep='
 
 
 
-pdf(file = paste(root, 'shared/data/wp-5/clinical_imputation/ctsVarImp.pdf', sep=''))
-
 densityplot(Imputation)
-
-dev.off()
-
 
 plot(Imputation)
 
