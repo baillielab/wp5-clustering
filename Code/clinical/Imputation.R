@@ -93,7 +93,7 @@ method <- createMethod(impExclude)
 
 # Carry out imputation
 
-Imputation <- mice(data,m=3,maxit=5, predictorMatrix = quickpred(data, exclude = impExclude), method = method  )
+Imputation <- mice(data,m=5,maxit=50, predictorMatrix = quickpred(data, exclude = impExclude), method = method  )
 
 # Save the mids objection 
 
