@@ -1,0 +1,11 @@
+#!/bin/bash -l
+#PBS -N clusteringJob
+#PBS -l walltime=10:00:00
+#PBS -l ncpus=258,mem=10G
+#PBS -q uv2000
+#PBS -j oe
+cd $PBS_O_WORKDIR
+source /home/u034/shared/anaconda3/bin/activate
+conda activate r_env
+R --file=/home/u034/stevenkerr/Git/wp5-clustering/Code/clinical/mixedClustering.R
+

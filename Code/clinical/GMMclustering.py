@@ -15,8 +15,6 @@ from scipy.stats import zscore
 
 import plotly.express as px
 
-import matplotlib.pyplot as plt
-
 import plotly.io as pio
 
 
