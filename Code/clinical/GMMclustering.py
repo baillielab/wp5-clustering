@@ -89,7 +89,7 @@ for components in range(1,6):
     
     # Fit GMM model
     
-    gmm = GaussianMixture(n_components=5, covariance_type='diag', random_state=0).fit( normData[variables] )
+    gmm = GaussianMixture(n_components=components, covariance_type='diag', random_state=0).fit( normData[variables] )
     
     
     # means and covariances of the GMM components
