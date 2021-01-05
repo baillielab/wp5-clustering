@@ -1,0 +1,10 @@
+#!/bin/bash -l
+#PBS -N GMMclusteringJob
+#PBS -l walltime=10:00:00 
+#PBS -l ncpus=64,mem=10G 
+#PBS -q uv2000 
+#PBS -j oe
+cd $PBS_O_WORKDIR 
+source /home/u034/shared/anaconda3/bin/activate
+conda activate r_env 
+python GMMclustering.py

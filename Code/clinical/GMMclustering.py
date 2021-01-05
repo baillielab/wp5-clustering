@@ -23,7 +23,7 @@ import pickle
 # This takes care of changing path names depending on whether working on ultra or not.
 # If working on ultra, set ultra==True
 
-ultra = False
+ultra = True
 
 if ultra == True:
     
@@ -85,7 +85,7 @@ variables = normData.columns.drop(['sao2', 'fio2' ])
 summaryStats = pd.DataFrame(columns = ['BIC', 'Likelihood'] )
 
 
-for components in range(1,6):
+for components in range(1,21):
     
     # Fit GMM model
     
@@ -106,7 +106,7 @@ for components in range(1,6):
       
     savepath = root + 'stevenkerr/Git/wp5-clustering/Code/clinical/GMM clustering/' + str(components) + '.html'
       
-    pio.write_html(figure, file=savepath, auto_open=True)
+    pio.write_html(figure, file=savepath, auto_open=False)
 
 
      # bic and score for the model
