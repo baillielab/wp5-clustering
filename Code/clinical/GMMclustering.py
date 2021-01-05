@@ -104,7 +104,7 @@ for components in range(1,6):
     
     figure = px.line(means, x=means.index, y= means.columns, template = "simple_white" )
       
-    savepath = root + 'stevenkerr/Git/wp5-clustering/Code/clinical/GMM clustering' + str(components) + '.html'
+    savepath = root + 'stevenkerr/Git/wp5-clustering/Code/clinical/GMM clustering/' + str(components) + '.html'
       
     pio.write_html(figure, file=savepath, auto_open=True)
 
