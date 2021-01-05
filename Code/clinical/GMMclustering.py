@@ -17,6 +17,8 @@ import plotly.express as px
 
 import plotly.io as pio
 
+import pickle
+
 
 # This takes care of changing path names depending on whether working on ultra or not.
 # If working on ultra, set ultra==True
@@ -59,6 +61,15 @@ def zscoreInverse(df, moments):
     return original
 
 
+def Save(Object, filename):
+    
+    file = open( root + 'stevenkerr/Git/wp5-clustering/Code/clinical/GMM clustering' + filename + ".pkl", "wb")
+    
+    pickle.dump(Object, file)
+
+    file.close()
+
+
 # z-normalise the data.
 
 normData = pd.DataFrame(  zscore( data ), columns = data.columns, index = data.index)
@@ -70,9 +81,48 @@ normData = pd.DataFrame(  zscore( data ), columns = data.columns, index = data.i
 variables = normData.columns.drop(['sao2', 'fio2' ])
 
 
-# Fit GMM model
 
-gmm = GaussianMixture(n_components=5, covariance_type='diag', random_state=0).fit( normData[variables] )
+summaryStats = pd.DataFrame(columns = ['BIC', 'Likelihood'] )
+
+
+for components in range(1,6):
+    
+    # Fit GMM model
+    
+    gmm = GaussianMixture(n_components=5, covariance_type='diag', random_state=0).fit( normData[variables] )
+    
+    
+    # means and covariances of the GMM components
+    
+    means = pd.DataFrame( gmm.means_, columns = normData[variables].columns).T
+    
+    #covs = gmm.covariances_, 
+    
+    
+    
+    # Save a plot of the means
+    
+    figure = px.line(means, x=means.index, y= means.columns, template = "simple_white" )
+      
+    savepath = root + 'stevenkerr/Git/wp5-clustering/Code/clinical/GMM clustering' + str(components) + '.html'
+      
+    pio.write_html(figure, file=savepath, auto_open=True)
+
+
+     # bic and score for the model
+    
+    summaryStats.loc['components', :] = [gmm.bic(normData[variables]), gmm.score(normData[variables])]
+    
+    gmm.bic(normData[variables])
+
+
+
+
+
+
+
+
+
 
 # Predict probability of labels, and labels.
 
@@ -81,25 +131,5 @@ probs = gmm.predict_proba( normData[variables] )
 labels = gmm.predict( normData[variables] )
 
 
-# bic score for the model
-
-gmm.bic(normData[variables])
-
-
-# means and covariances of the GMM components
-
-means = pd.DataFrame( gmm.means_, columns = normData[variables].columns).T
-
-covs = gmm.covariances_, 
-
-
-
-# Save a plot of the means
-
-figure = px.line(means, x=means.index, y= means.columns, template = "simple_white" )
-  
-savepath = root + 'stevenkerr/Git/wp5-clustering/Code/clinical/means.html'
-  
-pio.write_html(figure, file=savepath, auto_open=True)
 
 
