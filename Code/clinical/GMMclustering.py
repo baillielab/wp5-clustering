@@ -63,11 +63,18 @@ def zscoreInverse(df, moments):
 
 def Save(Object, filename):
     
-    file = open( root + 'stevenkerr/Git/wp5-clustering/Code/clinical/GMM clustering' + filename + ".pkl", "wb")
+    file = open( root + 'stevenkerr/Git/wp5-clustering/Code/clinical/GMM clustering/' + filename + ".pkl", "wb")
     
     pickle.dump(Object, file)
 
     file.close()
+    
+    
+def Open(filename):
+
+    file = open( root + 'stevenkerr/Git/wp5-clustering/Code/clinical/GMM clustering/' + filename + ".pkl", "rb")
+    
+    return pickle.load(file)    
 
 
 # z-normalise the data.
@@ -111,17 +118,16 @@ for components in range(1,21):
 
      # bic and score for the model
     
-    summaryStats.loc['components', :] = [gmm.bic(normData[variables]), gmm.score(normData[variables])]
+    summaryStats.loc[components, :] = [gmm.bic(normData[variables]), gmm.score(normData[variables])]
     
-    gmm.bic(normData[variables])
 
 
 
 
+Save(summaryStats, 'summaryStats')
 
 
-
-
+summaryStats = Open('summaryStats')
 
 
 # Predict probability of labels, and labels.
