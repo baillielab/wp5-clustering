@@ -27,7 +27,7 @@ data <- fread( paste( root, 'shared/data/wp-5/clinical_imputation/cleanData.csv'
 # catVars is a list of variables that are categorical.
 
 catVars <- c('sex', 'ethnicity', 'infect_cmtrt', 'chrincard', 'chronicpul_mhyn', 'asthma_mhyn', 'renal_mhyn', 'modliv',           
-             'diabetescom_mhyn', 'diabetes_mhyn', 'dementia_mhyn', 'malignantneo_mhyn', 'obesity_mhyn' )
+             'diabetes', 'dementia_mhyn', 'malignantneo_mhyn', 'obesity_mhyn' )
 
 # mice needs categorical varaiables to be factors
 

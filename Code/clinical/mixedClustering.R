@@ -7,7 +7,7 @@ library(MixAll)
 # This takes care of changing path names depending on whether working on ultra or not.
 # If working on ultra, set ultra==True
 
-ultra <- TRUE
+ultra <- FALSE
 
 if (ultra == TRUE){
   
@@ -19,7 +19,7 @@ if (ultra == TRUE){
 
 
 
-data <- fread( paste( root, 'shared/data/wp-5/clinical_imputation/cleanData.csv', sep=''), data.table=FALSE)
+data <- fread( paste( root, 'shared/data/wp-5/clinical_imputation/imputed_datasets/imputed_dataset_1.csv', sep=''), data.table=FALSE)
 
 # catVars is a list of variables that are categorical.
 
@@ -34,7 +34,7 @@ data$subjid <- NULL
 
 # z- score normalise data
 
-data <- as.data.frame(scale(data) )
+#data <- as.data.frame(scale(data) )
 
 
 
@@ -62,7 +62,7 @@ mixedClustering <- clusterMixedData( dataList, models, nbCluster=5, strategy = c
 
 # Save the clustering object
 
-save(mixedClustering, file = paste( root,'stevenkerr/Git/wp5-clustering/Code/clinical/clustering.RData', sep='') )
+save(mixedClustering, file = paste( root,'stevenkerr/Git/wp5-clustering/Code/clinical/clustering2.RData', sep='') )
 
 
 
