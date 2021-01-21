@@ -77,7 +77,7 @@ def Open(filename):
     return pickle.load(file)    
 
 
-# z-normalise the data.
+# z-normalise the data. This is mainly for visulisation purposes.
 
 normData = pd.DataFrame(  zscore( data ), columns = data.columns, index = data.index)
 

@@ -7,6 +7,8 @@ Created on Wed Dec  2 10:03:25 2020
 
 import pandas as pd
 
+import numpy as np
+
 
 
 # This takes care of changing path names depending on whether working on ultra or not.
@@ -32,8 +34,8 @@ path = root + 'shared/data/wp-5/data_linkage/release/datasets/clinical/002_crf_2
 
 
 catVars= ['subjid', 'sex', 'ethnicity', 'infect_cmtrt', 'chrincard', 'chronicpul_mhyn', 
-          'asthma_mhyn', 'renal_mhyn', 'modliv', 'diabetescom_mhyn', 'diabetes_mhyn', 
-          'dementia_mhyn', 'malignantneo_mhyn', 'obesity_mhyn']
+          'asthma_mhyn', 'renal_mhyn', 'modliv', 'diabetes_type_mhyn','diabetescom_mhyn',
+          'diabetes_mhyn', 'dementia_mhyn', 'malignantneo_mhyn', 'obesity_mhyn']
 
 # realVars is a list of variables that take values in the real numbers
 
@@ -73,7 +75,7 @@ data = data.dropna(axis=0, how = 'all')
 
 
 # Do the following replacements:
-# no, No, NO, Unchecked -> 0
+# no, No, NO, Unchecked, N/K -> 0
 # yes, Yes, YES, Checked -> 1
 # Unknown, Not specified -> nan
 #
@@ -86,8 +88,11 @@ data = data.dropna(axis=0, how = 'all')
 # East Asian -> 6
 # Latin American -> 7
 # Aboriginal/First Nations -> 8
+#
+# Male -> 0
+# Female -> 1
 
-data = data.replace(to_replace=['no', 'No', 'NO', 'yes', 'Yes', 'YES' ], value=[0,0,0,1,1,1])
+data = data.replace(to_replace=['no', 'No', 'NO', 'N/K', 'yes', 'Yes', 'YES' ], value=[0,0,0,0,1,1,1])
 
 data = data.replace(to_replace=['Unknown', 'Not specified', ''], value=['nan', 'nan', 'nan'])
 
@@ -105,6 +110,8 @@ ethnic_values  = ethnic_values[~pd.isnull(ethnic_values)]
 data['ethnicity'] = data['ethnicity'].replace(to_replace=ethnic_values, value = range(len(ethnic_values)) )
 
 
+
+data.loc[:, data.columns != 'subjid'] =  data.loc[:, data.columns != 'subjid'].astype(float)
 
 
 # 'daily_fio2c_lborres' is is oxygen received in litres per minute.
@@ -261,8 +268,21 @@ def addSFR(data):
     return data
 
 
-
-
+def addDiabetes(data):
+    
+    positive = (data['diabetes_type_mhyn'] == 1) | (data['diabetes_type_mhyn'] == 2) \
+                      |( data['diabetescom_mhyn'] == 1)  | ( data['diabetes_mhyn'] == 1)
+    
+    negative =  (data['diabetes_type_mhyn'] == 0) | ( data['diabetescom_mhyn'] == 0) \
+             | ( data['diabetes_mhyn'] == 0)                   
+    
+    data['diabetes'] = np.nan   
+    
+    data['diabetes'][negative]  = 0
+    
+    data['diabetes'][positive]  = 1 
+    
+    return data
 
 
 data = fixNeg(data)    
@@ -273,17 +293,16 @@ data = cleanInt1(data)
 
 data = squeeze(data)
 
-
 data = addSFR(data)
 
-
+data = addDiabetes(data)
 
 # Drop columns that aren't of interest
 
-data = data.drop( percentVars + Int1Vars + ['daily_fio2c_lborres'], axis=1 )
+data = data.drop( percentVars + Int1Vars + ['daily_fio2c_lborres', 'diabetes_type_mhyn', \
+                             'diabetescom_mhyn', 'diabetes_mhyn'], axis=1 )
 
 
-data.loc[:, data.columns != 'subjid'] =  data.loc[:, data.columns != 'subjid'].astype(float)
 
 # Save data as csv  .
 # The path may need to be changed depending on what machine your are working on.
@@ -293,11 +312,6 @@ data.loc[:, data.columns != 'subjid'] =  data.loc[:, data.columns != 'subjid'].a
 # 'Y:/shared/data/wp-5/imputed_clinical_data/cleanData.csv'
 
 data.to_csv( root + 'shared/data/wp-5/clinical_imputation/cleanData.csv', index = False)
-
-
-
-
-
 
 
 
