@@ -1,17 +1,19 @@
 #Lavaan growth modeling
 ########################################################################################
 #data used 15-12-2020
-df_sfr<-read.csv("/home/u034/mcswets/df_sfr20201207-2.csv")
+df_sfr<-read.csv("/home/u034/mcswets/sfr_2020/df_sfr20201207-2.csv")
 
 #####################################################################################
 
-#growth mixed modelling  using LCMM package
+#growth mixed modelling  using lcmm and LCTM tools package
 library(lcmm)
 library(LCTMtools)
 library(tidyr)
+library(dplyr)
 #hlme function for latent class linear mixed models  (=growth mixed models)
 #make sfr dataframe into a long dataframe
-df_long<-df_sfr[,c(2:7)]
+df_long<-df_sfr[,c(3:8)]
+colnames(df_sfr)
 df_long$numeric_id<-seq.int(nrow(df_long))
 sfr_long<-gather(df_long, measurement_day, sfr_value, day_0:day_8, factor_key=T)
 #hlme function for latent class linear mixed models  (=growth mixed models)
@@ -23,24 +25,24 @@ set.seed(2222)
 head(sfr_long)
 sfr_hlme_1<-hlme(sfr_value ~ measurement_day,
                  subject = "numeric_id", ng = 1, data=sfr_long)
-sfr_hlme_2<-hlme(sfr_value ~ measurement_day,
+sfr_hlme_22<-hlme(sfr_value ~ measurement_day,
                   mixture= ~ measurement_day,
                   subject = "numeric_id", ng = 2,
                   data=sfr_long, B=sfr_hlme_1)
 sfr_hlme_3<-hlme(sfr_value ~ measurement_day,
-                  mixture= ~ measurement_day,
-                  subject = "numeric_id", ng = 3,
-                  data=sfr_long, B=sfr_hlme_1)
+                 mixture= ~ measurement_day,
+                 subject = "numeric_id", ng = 3,
+                 data=sfr_long, B=sfr_hlme_1)
 sfr_hlme_4<-hlme(sfr_value ~ measurement_day,
-                  mixture= ~ measurement_day,
-                  subject = "numeric_id", ng = 4,
-                  data=sfr_long, B=sfr_hlme_1)
+                 mixture= ~ measurement_day,
+                 subject = "numeric_id", ng = 4,
+                 data=sfr_long, B=sfr_hlme_1)
 sfr_hlme_5<-hlme(sfr_value ~ measurement_day,
                  mixture= ~ measurement_day,
                  subject = "numeric_id", ng = 5,
                  data=sfr_long, B=sfr_hlme_1)
 #pick HLME with lowers BIC value + clinically relevant
-summarytable(sfr_hlme_1, sfr_hlme_2, sfr_hlme_3, sfr_hlme_4)
+summarytable(sfr_hlme_1, sfr_hlme_2, sfr_hlme_3, sfr_hlme_4, sfr_hlme_5)
 summarytable(sfr_hlme_4)
 #check summary for selected number of clusters
 summary(sfr_hlme_4)
@@ -57,21 +59,75 @@ plot(plot_cluster, legend.loc= "topleft", lty=1,
 rpng.off()
 #check size of clusters (+more)
 lcmm::postprob(sfr_hlme_4)
-?predictY
+
 
 #add to dataframe (df_sfr)
 library(dplyr)
 df_sfr<-df_sfr %>%
-        dplyr::rename(numeric_id= num_id)
+  dplyr::rename(numeric_id= num_id)
 gmmclust_dataframe<-sfr_hlme_4$pprob[,1:2]
 df_sfr<-left_join(df_sfr, gmmclust_dataframe, by ="numeric_id")
 df_sfr<-df_sfr %>%
-        dplyr::rename(gmmclust= class)
+  dplyr::rename(gmmclust= class)
+
+############################### NON LINEAR MODELS ################################
+#gridsearch> run each hlme model 100 tmes (rep=100) using different start values
+#to avoid local maxima. Start values are based on the 1 class model (sfr_hlme_1)
+# Latent Class Growth Analysis and Growth Mixture Modeling using R: A tutorial for two R-packages and a comparison with Mplus
+#
+sfr_hlme_1<-hlme(sfr_value ~ measurement_day,
+                 subject = "numeric_id", ng = 1, data=sfr_long)
+sfr_hlme_2<-gridsearch(rep=100, maxiter=10, minit=sfr_hlme_1,
+                       hlme(sfr_value ~ measurement_day,
+                            mixture= ~ measurement_day,
+                            subject = "numeric_id", ng = 2,
+                            data=sfr_long))
+sfr_hlme_3<-gridsearch(rep=100, maxiter=10, minit=sfr_hlme_1,
+                       hlme(sfr_value ~ measurement_day,
+                            mixture= ~ measurement_day,
+                            subject = "numeric_id", ng = 3,
+                            data=sfr_long))
+sfr_hlme_4<-gridsearch(rep=100, maxiter=10, minit=sfr_hlme_1,
+                       hlme(sfr_value ~ measurement_day,
+                            mixture= ~ measurement_day,
+                            subject = "numeric_id", ng = 4,
+                            data=sfr_long))
+sfr_hlme_5<-gridsearch(rep=100, maxiter=10, minit=sfr_hlme_1,
+                       hlme(sfr_value ~ measurement_day,
+                            mixture= ~ measurement_day,
+                            subject = "numeric_id", ng = 5,
+                            data=sfr_long))
+lcmm_1<-lcmm(sfr_value ~ measurement_day+I(measurement_day^2),
+             subject = "numeric_id", ng = 1, data=sfr_long, link="linear")
+lcmm_2<-lcmm(sfr_value ~ measurement_day,
+             mixture= ~ measurement_day,
+             subject = "numeric_id", ng = 2, data=sfr_long, link="splines")
+lcmm_3<-lcmm(sfr_value ~ measurement_day,
+             mixture= ~ measurement_day,
+             subject = "numeric_id", ng = 3, data=sfr_long, link="beta")
+lcmm_4<-lcmm(sfr_value ~ measurement_day,
+             mixture= ~ measurement_day,
+             subject = "numeric_id", ng = 4, data=sfr_long, link="beta")
+sfr_hlme_5<-gridsearch(rep=100, maxiter=10, minit=sfr_hlme_1,
+                       hlme(sfr_value ~ measurement_day,
+                            mixture= ~ measurement_day,
+                            subject = "numeric_id", ng = 5,
+                            data=sfr_long))
+#visualize clusters in plot
+newdata<-data.frame(measurement_day=c(0,2,4,6,8))
+plot_cluster<-predictY(lcmm_2, newdata, var.time="measurement_day", draws=T,
+                       interval= "confidence")
+plot_cluster
+plot(plot_cluster, legend.loc= "topleft", lty=1, 
+     xlab="Day of measurement", ylab ="SFR Value")
+rpng.off()
+
+summarytable(sfr_hlme_1, sfr_hlme_2, sfr_hlme_3, sfr_hlme_4)
 
 ########################################################################################
 df_sfr including GMM class membership
 write.csv(df_sfr, "df_sfr_17122020.csv")
-df_sfr<-read.csv("/home/u034/mcswets/df_sfr_17122020.csv")
+df_sfr<-read.csv("/home/u034/mcswets/sfr_2020/df_sfr_17122020.csv")
 ########################################################################################
 
 #plot change in BIC with different clusters
@@ -92,6 +148,7 @@ cluster2<-subset(df_sfr, df_sfr$gmmclust == 2)
 cluster3<-subset(df_sfr, df_sfr$gmmclust == 3)
 cluster4<-subset(df_sfr, df_sfr$gmmclust == 4)
 library(ggplot2)
+library(tidyr)
 cluster1_long<-gather(cluster1, measurement_day, sfr_value, day_0:day_8, factor_key=T)
 violin_1<-ggplot(cluster1_long, aes(x=measurement_day, y=sfr_value))
 v1<-violin_1 + geom_violin()+ 
@@ -124,6 +181,48 @@ v4<-violin_4 + geom_violin()+
 install.packages("cowplot",repos="https://cran.rstudio.com/")
 library(cowplot)
 plot_grid(v1,v2,v3,v4)
+
+
+#transparent graphs for each cluster
+p_clus1<- ggplot(data=cluster1_long, aes(x=measurement_day, y=sfr_value))
+p1<-p_clus1 + 
+  geom_line(aes(group=subjid), alpha=0.1)+
+  xlab("Measurement day")+
+  ylab("SFR value")+
+  ggtitle("Cluster 1")
+p_clus2<- ggplot(data=cluster2_long, aes(x=measurement_day, y=sfr_value))
+p2<-p_clus2 + 
+  geom_line(aes(group=subjid), alpha=0.1)+
+  xlab("Measurement day")+
+  ylab("SFR value")+
+  ggtitle("Cluster 2")
+p_clus3<- ggplot(data=cluster3_long, aes(x=measurement_day, y=sfr_value))
+p3<-p_clus3 + 
+  geom_line(aes(group=subjid), alpha=0.1)+
+  xlab("Measurement day")+
+  ylab("SFR value")+
+  ggtitle("Cluster 3")
+p_clus4<- ggplot(data=cluster4_long, aes(x=measurement_day, y=sfr_value))
+p4<-p_clus4 + 
+  geom_line(aes(group=subjid), alpha=0.1)+quit
+xlab("Measurement day")+
+  ylab("SFR value")+
+  ggtitle("Cluster 4")
+
+library(cowplot)
+plot_grid(p1,p2,p3,p4)
+
+#density
+d<-density(cluster1_long$sfr_value)
+plot(d)
+d2<-density(cluster2_long$sfr_value)
+plot(d2)
+d3<-density(cluster3_long$sfr_value)
+plot(d3)
+d4<-density(cluster4_long$sfr_value)
+plot(d4)
+plot_grid(d,d2,d3,d4)
+rpng.off()
 ########################################################################################
 #gmmclust characteristics
 tapply(df_sfr$age, df_sfr$gmmclust, quantile, na.rm = TRUE)
@@ -170,7 +269,7 @@ se_sfr_day<-cbind(se_sfr_day, clusters)
 meansfrday_long<-gather(mean_sfr_day, 
                         measurement_day, sfr_value, day0:day8, factor_key=T)
 sesfrday_long<-gather(se_sfr_day, 
-                        measurement_day, SE_value, day0se:day8se, factor_key=T)
+                      measurement_day, SE_value, day0se:day8se, factor_key=T)
 
 library(dplyr)
 library(ggplot2)
@@ -180,7 +279,7 @@ sfr_long_df<-subset(sfr_long_df[,c(1:3,6)])
 sfr_long_df
 
 ggplot(sfr_long_df, aes(x=measurement_day, 
-                            y=sfr_value, colour=clusters, group= clusters)) +
+                        y=sfr_value, colour=clusters, group= clusters)) +
   geom_point()+
   geom_line()+
   geom_errorbar(aes(ymin=sfr_value-SE_value,
@@ -237,3 +336,73 @@ chisq.multcomp(cardiac_arrest1, p.method= "bonferroni")
 
 test<-rbind(c(18,90),c(6,149))
 chisq.test(test)
+
+####################################viraemia###########################################
+#import data 30-11-2020 viraemia set
+vir_301120<-read.csv("/home/u034/v1nrodge/viraemia/20201130_vir_metadata.csv")
+library(dplyr)
+#==============================================================================
+head(vir_301120)
+#remove some irrelevant columns
+vir_301120<-vir_301120[,c(1,5:7)]
+#rename subjid and Day column
+vir_301120<- vir_301120%>%
+  dplyr::rename(subjid= canonical_isaric_id)
+vir_301120<- vir_301120%>%
+  dplyr::rename(viraemia_day= Day)
+#remove rows with missing subjid (=minus 4 rows)
+vir_301120<-subset(vir_301120, !is.na(vir_301120$subjid))
+#keep highest value for subjects in database twice
+vir_301120<- vir_301120 %>%
+  group_by (subjid) %>%
+  slice(which.max(Vir_Copies))
+
+#join viraemia data with master dataframe
+df_sfr<-left_join(df_sfr,vir_301120, by= "subjid")
+colnames(df_sfr)
+
+tapply(df_sfr$Vir_Copies, df_sfr$gmmclust, quantile, na.rm = TRUE)
+summary(df_sfr$Vir_Copies)
+table(df_sfr$Vir_Positive, df_sfr$gmmclust)
+
+#cytokine data from Clark
+library(dplyr)
+cytokine_data<-read.csv("/Users/Maaike/Rstudio/SFratio/cytokine_data_clark.csv")
+c2s(cytokine_data)
+#rename 'X' column to subjectid
+cytokine_data<-cytokine_data %>%
+  dplyr::rename(subjid= X)
+#make df with just cluster assignment and subject id
+subject_cluster<-df_sfr[,c(3,150)]
+#add to cytokine dataframe
+cytokine_data<-left_join(cytokine_data,subject_cluster, by= "subjid")
+#number of subjects with cytokine and cluster data = 156
+cytokine_data<-subset(cytokine_data, !is.na(gmmclust))
+
+#significance 
+kruskal.test(cytokine_data$IL.6Ra, cytokine_data$gmmclust)
+
+
+#co-infection data
+library(tidyr)
+co_infectiondata<-read.csv("/Users/Maaike/Rstudio/SFratio/resp_infection_data_subjids_first_wave.csv")
+c2s(co_infectiondata)
+#reshape into long format
+co_infection<-reshape(co_infectiondata,
+                      direction = "long",
+                      varying = list(c("community_acquired_resp_infection", 
+                                       "hospital_acquired_resp_infection",
+                                       "hospital_acquired_resp_infection_without_community",
+                                       "unknown_date_resp_infection")),
+                      v.names = "subjid")
+#add a column with HAP/CAP for each subject and remove unnecessary columns
+co_infection$hapcap<-"hapcap"
+co_infection<-co_infection[,c(2,4)]
+#only keep unique subjid
+co_infection<-aggregate(hapcap ~ subjid, co_infection, function(x) unique(x))
+#merge with larger dataframe
+co_infection<-left_join(co_infection,subject_cluster, by= "subjid")
+#remove subjects without a cluster assignment
+co_infection<-subset(co_infection, !is.na(gmmclust))
+
+table(co_infection$gmmclust)
