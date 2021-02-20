@@ -1,7 +1,13 @@
 #Lavaan growth modeling
 ########################################################################################
 #data used 15-12-2020
-df_sfr<-read.csv("/home/u034/mcswets/sfr_2020/df_sfr20201207-2.csv")
+
+library(data.table)
+
+df_sfr<-read.csv("Y:/mcswets/sfr_2020/df_sfr20201207-2.csv")
+
+#Steven - fread is a lot quicker, I recommend using it instead
+df_sfr <- fread("Y:/mcswets/sfr_2020/df_sfr20201207-2.csv", data.table=FALSE)
 
 #####################################################################################
 
@@ -77,11 +83,29 @@ df_sfr<-df_sfr %>%
 #
 sfr_hlme_1<-hlme(sfr_value ~ measurement_day,
                  subject = "numeric_id", ng = 1, data=sfr_long)
+
+
 sfr_hlme_2<-gridsearch(rep=100, maxiter=10, minit=sfr_hlme_1,
                        hlme(sfr_value ~ measurement_day,
                             mixture= ~ measurement_day,
                             subject = "numeric_id", ng = 2,
                             data=sfr_long))
+
+
+bob<-hlme(sfr_value ~ poly(measurement_day, degree = 2, raw = TRUE) , mixture = ~ poly(measurement_day, degree = 2, raw = TRUE), subject = "numeric_id", ng = 4, data=sfr_long)
+
+
+summary(bob)
+
+plot_cluster<-predictY(bob, newdata, var.time="measurement_day", draws=T,
+                       interval= "confidence")
+plot_cluster
+plot(plot_cluster, legend.loc= "topleft", lty=1, 
+     xlab="Day of measurement", ylab ="SFR Value")
+
+
+
+
 sfr_hlme_3<-gridsearch(rep=100, maxiter=10, minit=sfr_hlme_1,
                        hlme(sfr_value ~ measurement_day,
                             mixture= ~ measurement_day,

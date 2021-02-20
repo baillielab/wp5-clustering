@@ -1,0 +1,271 @@
+
+R version 4.0.2 (2020-06-22) -- "Taking Off Again"
+Copyright (C) 2020 The R Foundation for Statistical Computing
+Platform: x86_64-conda_cos6-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ###################################################################### 
+> 
+> ## Code author: Steven Kerr
+> 
+> ## Description: 
+> # This code does multiple imputation by chained equations for cleaned 
+> # topline clinical data
+> 
+> ###################################################################### 
+> 
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 4.0.3 
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following object is masked from ‘package:stats’:
+
+    filter
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 4.0.3 
+> library(data.table)
+
+Attaching package: ‘data.table’
+
+The following objects are masked from ‘package:dplyr’:
+
+    between, first, last
+
+Warning message:
+package ‘data.table’ was built under R version 4.0.3 
+> 
+> ########################### READ DATA ###############################################
+> 
+> # This takes care of changing path names depending on whether working on ultra or not.
+> # If working on ultra, set ultra==True
+> ultra <- TRUE
+> if (ultra == TRUE){
++   root <- '/home/u034/'
++ } else {
++   
++   root <- 'Y:/'
++ }
+> 
+> 
+> data <- fread( paste( root, 'shared/data/wp-5/clinical_imputation/cleanData.csv', sep=''), data.table=FALSE)
+> 
+> # nan from python in a column that has strings is read as "", so need to replace with NA.
+> data[ data[, 'ethnicity'] == "",  'ethnicity'] <- NA
+> 
+> # catVars is a list of variables that are categorical.
+> catVars <- c('sex', 'ethnicity', 'infect_cmtrt', 'chrincard', 'chronicpul_mhyn', 'asthma_mhyn', 'renal_mhyn', 'modliv',           
++              'diabetes', 'dementia_mhyn', 'malignantneo_mhyn', 'obesity_mhyn', 'immunosuppressed_yn' )
+> 
+> # mice needs categorical varaiables to be factors
+> data[catVars] <- lapply(data[catVars], factor )
+> 
+> ########################### PLOT MISSINGNESS ###############################################
+> 
+> # Create plots for number of NA in rows and columns
+> columnNA <- as.data.frame(colSums(is.na(data)) )
+> 
+> colnames(columnNA) <- 'Number of NA'
+> 
+> rowNA <- as.data.frame(rowSums(is.na(data)) )
+> 
+> colnames(rowNA) <- 'Number of NA'
+> 
+> 
+> columnNAPlot <-ggplot(columnNA, aes(x= reorder( rownames(columnNA), `Number of NA` ) , y=`Number of NA` )) + geom_bar(stat="identity", fill="steelblue") + coord_flip()
+> 
+> show(columnNAPlot)
+> 
+> rowNAPlot <-ggplot(rowNA, aes(x=`Number of NA` ) ) + geom_histogram(bins=dim(data)[2], fill="steelblue") + 
++   scale_x_continuous(breaks = seq(0, dim(data)[2], 1) ) +
++   scale_y_continuous(breaks = seq(0, 37000, 5000) )
+> 
+> show(rowNAPlot)
+> 
+> # Take a sample of data
+> #sample <- sample_n(data, 500)
+> 
+> ################################ IMPUTATION ###############################################
+> 
+> # impExclude is a vector of variables that are not to be imputed
+> impExclude <- c('subjid', 'sfr')
+> 
+> # mice normally automatically detects data types in each column and selects an appropriate imputation method for them
+> # However, since we are excluding some variables from the imputation, we have to set up the method vector manually.
+> 
+> createMethod <- function(impExclude){
++   method <- as.data.frame( sapply(data, nlevels) )
++   
++   method[ method[,1] > 2, ] <- 'polyreg'
++   
++   method[ impExclude, ] <- ''
++   
++   method[ method[,1] ==0 , ] <- 'pmm'
++   
++   method[ method[,1] ==2 , ] <- 'logreg'
++   
++   method <- dplyr::pull(method, colnames(method) )
++ }
+> 
+> method <- createMethod(impExclude)
+> 
+> # Carry out imputation
+> Imputation <- mice(data,m=1,maxit=100, predictorMatrix = quickpred(data, exclude = impExclude), method = method  )
+
+ iter imp variable
+  1   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  2   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  3   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  4   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  5   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  6   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  7   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  8   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  9   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  10   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  11   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  12   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  13   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  14   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  15   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  16   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  17   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  18   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  19   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  20   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  21   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  22   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  23   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  24   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  25   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  26   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  27   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  28   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  29   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  30   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  31   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  32   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  33   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  34   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  35   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  36   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  37   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  38   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  39   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  40   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  41   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  42   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  43   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  44   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  45   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  46   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  47   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  48   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  49   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  50   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  51   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  52   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  53   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  54   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  55   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  56   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  57   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  58   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  59   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  60   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  61   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  62   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  63   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  64   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  65   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  66   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  67   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  68   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  69   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  70   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  71   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  72   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  73   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  74   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  75   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  76   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  77   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  78   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  79   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  80   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  81   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  82   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  83   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  84   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  85   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  86   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  87   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  88   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  89   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  90   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  91   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  92   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  93   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  94   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  95   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  96   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  97   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  98   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  99   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+  100   1  temp_vsorres  hr_vsorres  rr_vsorres  sysbp_vsorres  admission_diabp_vsorres  chrincard  chronicpul_mhyn  asthma_mhyn  renal_mhyn  modliv  malignantneo_mhyn  obesity_mhyn  dementia_mhyn  infect_cmtrt  daily_lymp_lborres  daily_neutro_lborres  daily_plt_lborres  daily_bun_lborres  daily_creat_lborres  daily_crp_lborres  onset2admission  age  ethnicity  immunosuppressed_yn  sao2  fio2  diabetes
+> 
+> # Save the mids objection 
+> save(Imputation, file = paste(root,'shared/data/wp-5/clinical_imputation/mids.RData', sep='') )
+> 
+> ####################################### WRITE IMPUTED DATASETS ###########################################
+> 
+> for (m in 1:Imputation$m ){
++   name <- paste(root, 'shared/data/wp-5/clinical_imputation/imputed_datasets/imputed_dataset_', sep="")
++   name <- paste(name, m, sep="")
++   name <- paste(name, '.csv', sep="")
++   
++   Complete <- complete(Imputation, m)
++   
++   Complete['sfr'] <- Complete['sao2']/Complete['fio2']
++   
++   write.csv(Complete , name )
++ }
+> 
+> 
+> 
+> 
+> 
+> 
+> 

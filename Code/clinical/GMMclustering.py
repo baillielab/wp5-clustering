@@ -1,55 +1,48 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Dec 27 16:34:18 2020
+###################################################################### 
 
-@author: Steven
-"""
+## Code author: Steven Kerr
+
+## Description: 
+# This code carries out GMM clustering on clinical topline data
+# that has been cleaned and then imputed.
+
+###################################################################### 
 
 import numpy as np
-
 import pandas as pd
-
 from sklearn.mixture import GaussianMixture
-
 from scipy.stats import zscore
-
 import plotly.express as px
-
 import plotly.io as pio
+import os
 
-import pickle
-
+############################### IMPORT DATA ##########################
 
 # This takes care of changing path names depending on whether working on ultra or not.
 # If working on ultra, set ultra==True
 
-ultra = True
+ultra = False
 
 if ultra == True:
-    
     root = '/home/u034/'
-    
 else:
-    
     root = 'Y:/'
     
     
-
 path = root + 'shared/data/wp-5/clinical_imputation/imputed_datasets/imputed_dataset_1.csv'
 
 data = pd.read_csv(path, index_col=0)
 
-# Make subjid the index, and drop subid as a column
-
+# Make subjid the index, and drop subjid as a column
 data.index = data['subjid']
 
 data = data.drop('subjid', axis=1)
 
+########################## FUNCTIONS #################################
+
 # Get the mean and standard deviation of each column. 
 # Define a function that is the inverse of zscore
-
 moments= pd.DataFrame( [ data.mean() , data.std()], columns = data.columns, index = ['mean', 'std'] )
-
 
 def zscoreInverse(df, moments):
     
@@ -60,82 +53,77 @@ def zscoreInverse(df, moments):
         
     return original
 
+############################# CLUSTERING #######################################
 
-def Save(Object, filename):
-    
-    file = open( root + 'stevenkerr/Git/wp5-clustering/Code/clinical/GMM clustering/' + filename + ".pkl", "wb")
-    
-    pickle.dump(Object, file)
+oneHot = pd.get_dummies(data['ethnicity'])
 
-    file.close()
-    
-    
-def Open(filename):
+data = pd.concat( [data, oneHot], axis=1)
 
-    file = open( root + 'stevenkerr/Git/wp5-clustering/Code/clinical/GMM clustering/' + filename + ".pkl", "rb")
-    
-    return pickle.load(file)    
+data = data.drop(['ethnicity'], axis=1)
 
+data['sex'] = data['sex'].replace(to_replace=['Female', 'Male' ], value=[0,1])
 
 # z-normalise the data. This is mainly for visulisation purposes.
+normData = pd.DataFrame(zscore(data), columns = data.columns, index = data.index)
 
-normData = pd.DataFrame(  zscore( data ), columns = data.columns, index = data.index)
-
-
-
-# Choose variables to be included in clustering
-
-variables = normData.columns.drop(['sao2', 'fio2' ])
+# Choose multiple feature subsets, for which clustering will be carried out
+allVars = normData.columns.drop(['sao2', 'fio2', 'sex' ])
 
 
+featureDict = {'allVars': allVars }
 
-summaryStats = pd.DataFrame(columns = ['BIC', 'Likelihood'] )
-
-
-for components in range(1,21):
+  
+def cluster(key, maxClusters):    
     
-    # Fit GMM model
+    summaryStats = pd.DataFrame(columns = ['BIC', 'Likelihood'] )
+        
+    predictions = pd.DataFrame( columns = range(1, maxClusters + 1))
     
-    gmm = GaussianMixture(n_components=components, covariance_type='diag', random_state=0).fit( normData[variables] )
+    variables = featureDict[key]
+    
+    for components in range(1, maxClusters +1):
+        
+        # Fit GMM model
+        gmm = GaussianMixture(n_components=components, covariance_type='diag', random_state=0).fit( normData[variables] )
+        
+        # means and covariances of the GMM components
+        means = pd.DataFrame( gmm.means_, columns = normData[variables].columns).T
+        
+        #covs = gmm.covariances_, 
+        
+        # Create a plot of the means
+        figure = px.line(means, x=means.index, y= means.columns, template = "simple_white" )
+        
+        savepath = root + 'stevenkerr/Git/wp5-clustering/Code/clinical/GMM_clustering_' + key 
+        
+        means.to_csv( savepath + '/means' + str(components) + '.csv')
+        
+        pio.write_html(figure, file= savepath + '/' + str(components), auto_open= False) 
+    
+        # bic and score for the model
+        summaryStats.loc[components, :] = [gmm.bic(normData[variables]), gmm.score(normData[variables])]
+     
+        predictions[ components] = gmm.predict(normData[variables])
+        
+    return(summaryStats, predictions)
     
     
-    # means and covariances of the GMM components
-    
-    means = pd.DataFrame( gmm.means_, columns = normData[variables].columns).T
-    
-    #covs = gmm.covariances_, 
     
     
+def multiCluster(maxClusters):
+
+    for key in featureDict: 
+        
+        savepath = root + 'stevenkerr/Git/wp5-clustering/Code/clinical/GMM_clustering_' + key 
+        
+        (summaryStats, predictions) = cluster(key, maxClusters)
+        
+        predictions.to_csv(savepath + '/predictions.csv', index = False)
+        
+        summaryStats.to_csv(savepath + '/summaryStats.csv', index = False)   
     
-    # Save a plot of the means
-    
-    figure = px.line(means, x=means.index, y= means.columns, template = "simple_white" )
-      
-    savepath = root + 'stevenkerr/Git/wp5-clustering/Code/clinical/GMM clustering/' + str(components) + '.html'
-      
-    pio.write_html(figure, file=savepath, auto_open=False)
-
-
-     # bic and score for the model
-    
-    summaryStats.loc[components, :] = [gmm.bic(normData[variables]), gmm.score(normData[variables])]
     
 
-
-
-
-Save(summaryStats, 'summaryStats')
-
-
-summaryStats = Open('summaryStats')
-
-
-# Predict probability of labels, and labels.
-
-probs = gmm.predict_proba( normData[variables] )
-
-labels = gmm.predict( normData[variables] )
-
-
+multiCluster(3)
 
 
