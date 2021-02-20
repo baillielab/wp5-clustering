@@ -14,7 +14,6 @@ from sklearn.mixture import GaussianMixture
 from scipy.stats import zscore
 import plotly.express as px
 import plotly.io as pio
-import os
 
 ############################### IMPORT DATA ##########################
 
@@ -106,7 +105,6 @@ def cluster(key, maxClusters):
         predictions[ components] = gmm.predict(normData[variables])
         
     return(summaryStats, predictions)
-    
     
     
     
