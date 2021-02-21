@@ -29,7 +29,7 @@ if (ultra == TRUE){
 data <- fread( paste( root, 'shared/data/wp-5/clinical_imputation/cleanData.csv', sep=''), data.table=FALSE)
 
 # nan from python in a column that has strings is read as "", so need to replace with NA.
-data[ data[, 'ethnicity'] == "",  'ethnicity'] <- NA
+data[, c('sex', 'ethnicity')][ data[, c('sex', 'ethnicity')] == ""] <- NA
 
 # catVars is a list of variables that are categorical.
 catVars <- c('sex', 'ethnicity', 'infect_cmtrt', 'chrincard', 'chronicpul_mhyn', 'asthma_mhyn', 'renal_mhyn', 'modliv',           

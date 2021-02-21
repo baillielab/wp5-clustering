@@ -61,6 +61,9 @@ load(file = paste(root, 'shared/data/wp-5/clinical_imputation/mids.RData', sep='
 # Load data
 data <- fread( paste( root, 'shared/data/wp-5/clinical_imputation/cleanData.csv', sep=''), data.table=FALSE)
 
+# nan from python in a column that has strings is read as "", so need to replace with NA.
+data[, c('sex', 'ethnicity')][ data[, c('sex', 'ethnicity')] == ""] <- NA
+
 densityplot(Imputation, data ~ temp_vsorres + hr_vsorres + rr_vsorres + sysbp_vsorres + admission_diabp_vsorres + daily_lymp_lborres +
       daily_neutro_lborres + daily_plt_lborres + daily_bun_lborres + daily_creat_lborres + daily_crp_lborres + onset2admission + age + sao2 + fio2 )
 

@@ -20,7 +20,7 @@ import plotly.io as pio
 # This takes care of changing path names depending on whether working on ultra or not.
 # If working on ultra, set ultra==True
 
-ultra = False
+ultra = True
 
 if ultra == True:
     root = '/home/u034/'
@@ -33,9 +33,9 @@ path = root + 'shared/data/wp-5/clinical_imputation/imputed_datasets/imputed_dat
 data = pd.read_csv(path, index_col=0)
 
 # Make subjid the index, and drop subjid as a column
-data.index = data['subjid']
+#data.index = data['subjid']
 
-data = data.drop('subjid', axis=1)
+#data = data.drop('subjid', axis=1)
 
 ########################## FUNCTIONS #################################
 
@@ -63,11 +63,13 @@ data = data.drop(['ethnicity'], axis=1)
 data['sex'] = data['sex'].replace(to_replace=['Female', 'Male' ], value=[0,1])
 
 # z-normalise the data. This is mainly for visulisation purposes.
-normData = pd.DataFrame(zscore(data), columns = data.columns, index = data.index)
+normData = pd.DataFrame( zscore(data.drop(['subjid'], axis = 1)),       \
+                        columns = data.columns.drop('subjid'), index = data.index)
+    
+normData.insert(0, 'subjid', data['subjid']  )  
 
 # Choose multiple feature subsets, for which clustering will be carried out
-allVars = normData.columns.drop(['sao2', 'fio2', 'sex' ])
-
+allVars = normData.columns.drop(['sao2', 'fio2', 'subjid' ])
 
 featureDict = {'allVars': allVars }
 
@@ -76,7 +78,7 @@ def cluster(key, maxClusters):
     
     summaryStats = pd.DataFrame(columns = ['BIC', 'Likelihood'] )
         
-    predictions = pd.DataFrame( columns = range(1, maxClusters + 1))
+    predictions = pd.DataFrame(normData['subjid'])
     
     variables = featureDict[key]
     
@@ -97,12 +99,12 @@ def cluster(key, maxClusters):
         
         means.to_csv( savepath + '/means' + str(components) + '.csv')
         
-        pio.write_html(figure, file= savepath + '/' + str(components), auto_open= False) 
+        pio.write_html(figure, file= savepath + '/' + str(components) + '.html', auto_open= False) 
     
         # bic and score for the model
         summaryStats.loc[components, :] = [gmm.bic(normData[variables]), gmm.score(normData[variables])]
      
-        predictions[ components] = gmm.predict(normData[variables])
+        predictions['clinical' + str(components)] =  gmm.predict(normData[variables])
         
     return(summaryStats, predictions)
     
@@ -121,7 +123,4 @@ def multiCluster(maxClusters):
         summaryStats.to_csv(savepath + '/summaryStats.csv', index = False)   
     
     
-
-multiCluster(3)
-
-
+multiCluster(20)
