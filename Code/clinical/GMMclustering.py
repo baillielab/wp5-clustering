@@ -120,7 +120,14 @@ def multiCluster(maxClusters):
         
         predictions.to_csv(savepath + '/predictions.csv', index = False)
         
-        summaryStats.to_csv(savepath + '/summaryStats.csv', index = False)   
+        summaryStats.to_csv(savepath + '/summaryStats.csv', index = False) 
+        
+        figure = px.line(summaryStats, x=summaryStats.index, y= ['BIC'], template = "simple_white" )
     
+        pio.write_html(figure, file= savepath + '/BIC.html', auto_open= False) 
+        
+        figure = px.line(summaryStats, x=summaryStats.index, y= ['Likelihood'], template = "simple_white" )
+    
+        pio.write_html(figure, file= savepath + '/Likelihood.html', auto_open= False) 
     
 multiCluster(20)
