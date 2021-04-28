@@ -20,7 +20,7 @@ import plotly.io as pio
 # This takes care of changing path names depending on whether working on ultra or not.
 # If working on ultra, set ultra==True
 
-ultra = True
+ultra = False
 
 if ultra == True:
     root = '/home/u034/'
@@ -71,7 +71,12 @@ normData.insert(0, 'subjid', data['subjid']  )
 # Choose multiple feature subsets, for which clustering will be carried out
 allVars = normData.columns.drop(['sao2', 'fio2', 'subjid' ])
 
-featureDict = {'allVars': allVars }
+allVarsNeth = normData.columns.drop(['sao2', 'fio2', 'subjid', 
+            'Aboriginal/First Nations', 'Arab', 'Black', 'East Asian',
+            'Latin American', 'Other', 'South Asian', 'West Asian', 'White'])
+
+
+featureDict = {'allVarsNeth': allVarsNeth}
 
   
 def cluster(key, maxClusters):    

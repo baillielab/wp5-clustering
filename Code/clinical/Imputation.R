@@ -38,6 +38,9 @@ catVars <- c('sex', 'ethnicity', 'infect_cmtrt', 'chrincard', 'chronicpul_mhyn',
 # mice needs categorical varaiables to be factors
 data[catVars] <- lapply(data[catVars], factor )
 
+# Add sf94
+data <- mutate(data, sf94 = case_when(  sao2 <= 0.94  | fio2 == 0.21 ~ sfr))  
+
 ########################### PLOT MISSINGNESS ###############################################
 
 # Create plots for number of NA in rows and columns
@@ -66,7 +69,7 @@ show(rowNAPlot)
 ################################ IMPUTATION ###############################################
 
 # impExclude is a vector of variables that are not to be imputed
-impExclude <- c('subjid', 'sfr')
+impExclude <- c('subjid', 'sfr', 'sao2', 'fio2')
 
 # mice normally automatically detects data types in each column and selects an appropriate imputation method for them
 # However, since we are excluding some variables from the imputation, we have to set up the method vector manually.
@@ -88,7 +91,7 @@ createMethod <- function(impExclude){
 method <- createMethod(impExclude)
 
 # Carry out imputation
-Imputation <- mice(data,m=1,maxit=100, predictorMatrix = quickpred(data, exclude = impExclude), method = method  )
+Imputation <- mice(data,m=1,maxit=200, predictorMatrix = quickpred(data, exclude = impExclude), method = method)
 
 # Save the mids objection 
 save(Imputation, file = paste(root,'shared/data/wp-5/clinical_imputation/mids.RData', sep='') )
