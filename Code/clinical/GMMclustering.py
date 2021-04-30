@@ -20,7 +20,7 @@ import plotly.io as pio
 # This takes care of changing path names depending on whether working on ultra or not.
 # If working on ultra, set ultra==True
 
-ultra = False
+ultra = True
 
 if ultra == True:
     root = '/home/u034/'
@@ -69,17 +69,23 @@ normData = pd.DataFrame( zscore(data.drop(['subjid'], axis = 1)),       \
 normData.insert(0, 'subjid', data['subjid']  )  
 
 # Choose multiple feature subsets, for which clustering will be carried out
-allVars = normData.columns.drop(['sao2', 'fio2', 'subjid' ])
+allVars = normData.columns.drop(['sao2', 'fio2', 'sfr', 'subjid' ])
 
-allVarsNeth = normData.columns.drop(['sao2', 'fio2', 'subjid', 
+allVarsNeth = normData.columns.drop(['sao2', 'fio2', 'sfr', 'subjid', 
             'Aboriginal/First Nations', 'Arab', 'Black', 'East Asian',
             'Latin American', 'Other', 'South Asian', 'West Asian', 'White'])
 
+resp = ['sex', 'age', 'hr_vsorres', 'rr_vsorres', 'chronicpul_mhyn', 'asthma_mhyn',
+        'chrincard', 'sf94', ]
 
-featureDict = {'allVarsNeth': allVarsNeth}
+featureDict = {'allVars': allVars,
+               'allVarsNeth': allVarsNeth,
+               'resp': resp}
 
-  
-def cluster(key, maxClusters):    
+
+def cluster(key, maxClusters):   
+    
+    print(key)
     
     summaryStats = pd.DataFrame(columns = ['BIC', 'Likelihood'] )
         
