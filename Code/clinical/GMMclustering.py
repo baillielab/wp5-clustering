@@ -85,8 +85,6 @@ featureDict = {'allVars': allVars,
 
 def cluster(key, maxClusters):   
     
-    print(key)
-    
     summaryStats = pd.DataFrame(columns = ['BIC', 'Likelihood'] )
         
     predictions = pd.DataFrame(normData['subjid'])
@@ -98,8 +96,20 @@ def cluster(key, maxClusters):
         # Fit GMM model
         gmm = GaussianMixture(n_components=components, covariance_type='diag', random_state=0).fit( normData[variables] )
         
+        # bic and score for the model
+        summaryStats.loc[components, :] = [gmm.bic(normData[variables]), gmm.score(normData[variables])]
+        
+        clusteringName = key + str(components)
+        
+        
+        predictions[clusteringName] =  gmm.predict(normData[variables])
+        
+        data_pred = pd.merge(normData, predictions, on = 'subjid')
+        
+        means = data_pred[ allVarsNeth.union([clusteringName])].groupby([clusteringName]).mean().T
+        
         # means and covariances of the GMM components
-        means = pd.DataFrame( gmm.means_, columns = normData[variables].columns).T
+        #means = pd.DataFrame( gmm.means_, columns = normData[variables].columns).T
         
         #covs = gmm.covariances_, 
         
@@ -111,11 +121,7 @@ def cluster(key, maxClusters):
         means.to_csv( savepath + '/means' + str(components) + '.csv')
         
         pio.write_html(figure, file= savepath + '/' + str(components) + '.html', auto_open= False) 
-    
-        # bic and score for the model
-        summaryStats.loc[components, :] = [gmm.bic(normData[variables]), gmm.score(normData[variables])]
-     
-        predictions['clinical' + str(components)] =  gmm.predict(normData[variables])
+      
         
     return(summaryStats, predictions)
     
