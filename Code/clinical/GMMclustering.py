@@ -82,6 +82,11 @@ featureDict = {'allVars': allVars,
                'allVarsNeth': allVarsNeth,
                'resp': resp}
 
+# For testing
+#normData = normData.sample(1000)
+#key = 'allVarsNeth'
+#components = 5
+
 
 def cluster(key, maxClusters):   
     
@@ -101,12 +106,12 @@ def cluster(key, maxClusters):
         
         clusteringName = key + str(components)
         
-        
+        # Get means of variables in allVarsNeth by cluster
         predictions[clusteringName] =  gmm.predict(normData[variables])
         
-        data_pred = pd.merge(normData, predictions, on = 'subjid')
+        normData_pred = pd.merge(normData, predictions, on = 'subjid')
         
-        means = data_pred[ allVarsNeth.union([clusteringName])].groupby([clusteringName]).mean().T
+        means = normData_pred[ allVarsNeth.union([clusteringName])].groupby([clusteringName]).mean().T
         
         # means and covariances of the GMM components
         #means = pd.DataFrame( gmm.means_, columns = normData[variables].columns).T
@@ -120,7 +125,17 @@ def cluster(key, maxClusters):
         
         means.to_csv( savepath + '/means' + str(components) + '.csv')
         
-        pio.write_html(figure, file= savepath + '/' + str(components) + '.html', auto_open= False) 
+        pio.write_html(figure, file= savepath + '/means' + str(components) + '.html', auto_open= False) 
+      
+        
+        # Create histrogram of sf94 by cluster  
+        data_pred = pd.merge(data, predictions, on = 'subjid')  
+        
+        histFig = px.histogram(data_pred, x='sf94', color=clusteringName, nbins = 10, \
+                               barmode = 'group', histnorm='probability density')
+            
+        
+        pio.write_html(histFig, file= savepath + '/sf94' + str(components) + '.html', auto_open= False) 
       
         
     return(summaryStats, predictions)
