@@ -17,7 +17,7 @@ library(data.table)
 
 # This takes care of changing path names depending on whether working on ultra or not.
 # If working on ultra, set ultra==True
-ultra <- TRUE
+ultra <- FALSE
 if (ultra == TRUE){
   root <- '/home/u034/'
 } else {
@@ -99,19 +99,13 @@ save(Imputation, file = paste(root,'shared/data/wp-5/clinical_imputation/mids.RD
 ####################################### WRITE IMPUTED DATASETS ###########################################
 
 for (m in 1:Imputation$m ){
-  name <- paste(root, 'shared/data/wp-5/clinical_imputation/imputed_datasets/imputed_dataset_', sep="")
-  name <- paste(name, m, sep="")
-  name <- paste(name, '.csv', sep="")
-  
+  name <- paste0(root, 'shared/data/wp-5/clinical_imputation/imputed_datasets/imputed_dataset_', m, '.csv')
+
   Complete <- complete(Imputation, m)
   
   Complete['sfr'] <- Complete['sao2']/Complete['fio2']
   
   write.csv(Complete , name )
 }
-
-
-
-
 
 

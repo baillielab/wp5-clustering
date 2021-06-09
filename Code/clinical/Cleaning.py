@@ -44,7 +44,7 @@ if ultra == True:
 else:
     root = 'Y:/'
 
-path = root + 'shared/data/wp-5/data_linkage/release/datasets/clinical/002_crf_20200904_topline_cleaned_20200921_161000.csv'
+path = root + 'shared/data/wp-4/clinical-data/007_crf_20210419/topline.csv'
 
 workingDir = root + 'stevenkerr/Git/wp5-clustering/Code/clinical'
 
